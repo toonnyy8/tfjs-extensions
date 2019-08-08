@@ -3,7 +3,7 @@ import "@babel/polyfill"
 import * as tf from "@tensorflow/tfjs"
 import * as tfex from "../src"
 
-(async () => {
+(async() => {
     let a = tf.tensor([
         [
             [1, 2, 3],
@@ -48,6 +48,11 @@ import * as tfex from "../src"
     tfex.mergeShape(a, [1, 2]).sum(1).print()
     const time3 = await tf.time(() => tfex.mergeShape(a, [1, 2]).sum(1));
     console.log(`kernelMs: ${time3.kernelMs}, wallTimeMs: ${time3.wallMs}`);
-
-    tf.dot(tfex.mergeShape(b, [1, 2]), tfex.mergeShape(a, [0, 2])).print()
+    tfex.mergeShape(b, [1, 2]).transpose().print()
+    tf.mul(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2])).sum(1).print()
+    tfex.mergeShape(a, [1, 2]).print()
+    tfex.mergeShape(b, [1, 2]).transpose().print()
+    tf.dot(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2]).transpose()).sum(1).print()
+        // tfex.einsum('ikj->i', a)
+    tf.Tensor
 })()

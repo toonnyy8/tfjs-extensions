@@ -34,11 +34,44 @@ export function mergeShape(tensor, axises) {
     })
 }
 
-export function einsum(equation = "", ...inputs) {
-    let [inputShapes, outputShape] = equation.split('->')
-    let inputShape = inputShapes.split(",")
-    let axis = {}
-    for (let i = 0; i < equation.length; i++) {
-        axis[equation[i]] = equation[i] == "," || equation[i] == "-" || equation[i] == ">" || equation[i] == " " || equation[i] == "." ? undefined : 0
+export function einsum(subscripts = "", ...operands) {
+    let [equation, inputs, , output] = subscripts.match("^([a-zA-Z,.]+)(->)([a-zA-Z.]*)?$") || [null, null, null, null]
+
+    if (operands.find(input => !(input instanceof tf.Tensor)) != undefined || operands.length == 0) {
+        console.error(`operands type is not tensor`)
+        return
     }
+
+    if (!equation) {
+        console.error(`Indices have incorrect format: ${subscripts}`)
+        return
+    }
+
+    inputs = inputs.split(",")
+    if (inputs.find(val => val == "") != undefined) {
+        console.error(`Indices have incorrect format: ${subscripts}`)
+        return
+    }
+
+    if (inputs.length != operands.length) {
+        console.error(`Incorrect number of operands`)
+        return
+    }
+
+    inputs.forEach((_, idx, arr) => {
+        arr[idx] = arr[idx].split("")
+        console.log(Math.max(...arr[idx]))
+        arr[idx].forEach(() => {
+
+        })
+    })
+    console.log(equation)
+
+
+    // let [inputShapes, outputShape] = equation.split('->')
+    // let inputShape = inputShapes.split(",")
+    // let axis = {}
+    // for (let i = 0; i < equation.length; i++) {
+    //     axis[equation[i]] = equation[i] == "," || equation[i] == "-" || equation[i] == ">" || equation[i] == " " || equation[i] == "." ? undefined : 0
+    // }
 }
