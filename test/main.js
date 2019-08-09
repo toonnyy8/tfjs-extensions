@@ -2,16 +2,18 @@ import "@babel/polyfill"
 
 import * as tf from "@tensorflow/tfjs"
 import * as tfex from "../src"
+import { async } from "q";
+import { TFHUB_SEARCH_PARAM } from "@tensorflow/tfjs-converter/dist/src/executor/graph_model";
 
 (async () => {
     let a = tf.tensor([
         [
-            [1, 2, 3],
+            [1, 4, 2],
             [1, 2, 1]
         ],
         [
-            [1, 2, 3],
-            [1, 2, 1]
+            [1, 4, 3],
+            [1, 3, 1]
         ]
     ])
     let b = tf.tensor([
@@ -29,33 +31,241 @@ import * as tfex from "../src"
 
     console.log(tf)
     console.log("---------")
-    a.print()
-    console.log("---------")
-
-    a.sum(2).sum(1).print()
-    const time1 = await tf.time(() => a.sum(2).sum(1));
-    console.log(`kernelMs: ${time1.kernelMs}, wallTimeMs: ${time1.wallMs}`);
 
     console.log("---------")
+    // tf.mul(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2])).sum(1).print()//tf.einsum('ijk,ijk->i', a, b)
 
-    a.reshape([2, 6]).sum(1).print()
-    const time2 = await tf.time(() => a.reshape([2, 6]).sum(1));
-    console.log(`kernelMs: ${time2.kernelMs}, wallTimeMs: ${time2.wallMs}`);
+    // await testTime(() => {
+    //     tf.print(
+    //         tf.sum(
+    //             tfex.mergeShape(
+    //                 tf.transpose(
+    //                     tf.squeeze(
+    //                         tf.stack(
+    //                             tf.unstack(
+    //                                 tf.expandDims(
+    //                                     tfex.mergeShape(a, [1, 2])
+    //                                     , [0]
+    //                                 )
+    //                             ).map(
+    //                                 (t1) => {
+    //                                     return t1.mul(tfex.mergeShape(b, [1, 2]))
+    //                                 }
+    //                             )
+    //                         )
+    //                         , [0]
+    //                     )
+    //                     , [0, 1]
+    //                 )
+    //                 , []
+    //             )
+    //             , [1]
+    //         )
+    //     )
+    // }, "tf.einsum('ijk,ijk->i', a, b)")//[27, 20]
+
+
+    await testTime(() => {
+        tf.print(
+            tf.sum(
+                tfex.mergeShape(
+                    tf.transpose(
+                        tf.squeeze(
+                            tf.stack(
+                                tf.unstack(
+                                    tf.expandDims(
+                                        tfex.mergeShape(a, [1, 2])
+                                        , [0]
+                                    )
+                                ).map(
+                                    (t1) => {
+                                        return tf.expandDims(t1.mul(tfex.mergeShape(b, [1, 2])), [2])
+                                    }
+                                )
+                            )
+                            , [0, 3]
+                        )
+                        , [0, 1]
+                    )
+                    , []
+                )
+                , [1]
+            )
+        )
+    }, "tf.einsum('ijk,ijk->i', a, b)")//[27, 20]
 
     console.log("---------")
+    // await testTime(() => {
+    //     tfex.mergeShape(tf.stack(tfex.mergeShape(a, [1, 2]).unstack().map((t1, idx1) => {
+    //         return t1.mul(tfex.mergeShape(b, [1, 2]))
+    //     })).transpose([1, 0, 2]), [1, 2]).sum(1).print()
+    // }, "tf.einsum('hjk,ijk->i', a, b)")//[59, 37]
 
-    console.log(a.shape)
-    tfex.mergeShape(a, [1, 2]).sum(1).print()
-    const time3 = await tf.time(() => tfex.mergeShape(a, [1, 2]).sum(1));
-    console.log(`kernelMs: ${time3.kernelMs}, wallTimeMs: ${time3.wallMs}`);
-    tfex.mergeShape(b, [1, 2]).transpose().print()
-    console.log("---------")
-    tf.mul(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2])).sum(1).print()//tf.einsum('ijk,ijk->i', a, b)
-    console.log("---------")
-    tf.dot(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2]).transpose()).sum(0).print()//tf.einsum('hjk,ijk->i', a, b)
-    console.log("---------")
-    tf.matMul(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2]).transpose()).sum(1).print()//tf.einsum('ijk,hjk->i', a, b)
-    console.log("---------")
-    tf.mul(tfex.mergeShape(a, [0, 2]), tfex.mergeShape(b.transpose([0, 2, 1]), [0, 2])).sum(0).print()//tf.einsum('ijk,hjk->i', a, b)
+    // await testTime(() => {
+    //     tf.print(
+    //         tf.sum(
+    //             tfex.mergeShape(
+    //                 tf.transpose(
+    //                     // tf.squeeze(
+    //                     tf.stack(
+    //                         tf.unstack(
+    //                             // tf.expandDims(
+    //                             tfex.mergeShape(a, [1, 2])
+    //                             //     , [0]
+    //                             // )
+    //                         ).map(
+    //                             (t1) => {
+    //                                 return t1.mul(tfex.mergeShape(b, [1, 2]))
+    //                             }
+    //                         )
+    //                     )
+    //                     //     , [0]
+    //                     // )
+    //                     , [1, 0, 2]
+    //                 )
+    //                 , [1, 2]
+    //             )
+    //             , [1]
+    //         )
+    //     )
+    // }, "tf.einsum('hjk,ijk->i', a, b)")//[59, 37]
 
+    await testTime(() => {
+        tf.print(
+            tf.sum(
+                tfex.mergeShape(
+                    tf.transpose(
+                        tf.squeeze(
+                            tf.stack(
+                                tf.unstack(
+                                    tf.expandDims(
+                                        tfex.mergeShape(a, [1, 2])
+                                        , [1]
+                                    )
+                                ).map(
+                                    (t1) => {
+                                        return tf.expandDims(t1.mul(tfex.mergeShape(b, [1, 2])), [2])
+                                    }
+                                )
+                            )
+                            , [3]
+                        )
+                        , [1, 0, 2]
+                    )
+                    , [1, 2]
+                )
+                , [1]
+            )
+        )
+    }, "tf.einsum('hjk,ijk->i', a, b)")//[59, 37]
+    // tfex.einsum('hjk,ijk->i', a, b).print()
+    console.log("---------")
+    // await testTime(() => {
+    //     tfex.mergeShape(tf.stack(tfex.mergeShape(a, [1, 2]).unstack().map((t1, idx1) => {
+    //         return t1.mul(tfex.mergeShape(b, [1, 2]))
+    //     })).transpose([0, 1, 2]), [1, 2]).sum(1).print()
+    // }, "tf.einsum('hjk,ijk->h', a, b)")//[44, 52]
+
+    await testTime(() => {
+        tf.print(
+            tf.sum(
+                tfex.mergeShape(
+                    tf.transpose(
+                        tf.squeeze(
+                            tf.stack(
+                                tf.unstack(
+                                    tf.expandDims(
+                                        tfex.mergeShape(a, [1, 2])
+                                        , [1]
+                                    )
+                                ).map(
+                                    (t1) => {
+                                        return tf.expandDims(t1.mul(tfex.mergeShape(b, [1, 2])), [2])
+                                    }
+                                )
+                            )
+                            , [3]
+                        )
+                        , [0, 1, 2]
+                    )
+                    , [1, 2]
+                )
+                , [1]
+            )
+        )
+    }, "tf.einsum('hjk,ijk->h', a, b)")//[44, 52]
+    console.log("---------")
+    // tf.matMul(tfex.mergeShape(a, [1, 2]), tfex.mergeShape(b, [1, 2]).transpose()).sum(1).print()//tf.einsum('ijk,hjk->i', a, b)
+    await testTime(() => {
+        tf.print(
+            tf.sum(
+                tfex.mergeShape(
+                    tf.transpose(
+                        tf.squeeze(
+                            tf.stack(
+                                tf.unstack(
+                                    tf.expandDims(
+                                        tfex.mergeShape(tf.transpose(a, [0, 1, 2]), [1, 2])
+                                        , [0]
+                                    )
+                                ).map(
+                                    (t1) => {
+                                        return tf.expandDims(t1.mul(tfex.mergeShape(tf.transpose(b, [0, 2, 1]), [1, 2])), [2])
+                                    }
+                                )
+                            )
+                            , [0, 3]
+                        )
+                        , [0, 1]
+                    )
+                    , []
+                )
+                , [1]
+            )
+        )
+    }, "tf.einsum('ijk,ikj->i',a,b)")//[23 22]
+    console.log("---------")
+
+    await testTime(() => {
+        tf.print(
+            tf.sum(
+                tfex.mergeShape(
+                    tf.transpose(
+                        tf.squeeze(
+                            tf.stack(
+                                tf.unstack(
+                                    tf.expandDims(
+                                        tfex.mergeShape(
+                                            tf.transpose(a, [0, 1, 2])
+                                            , [0, 2], 2
+                                        )
+                                        , [0]
+                                    )
+                                ).map(
+                                    (t1) => {
+                                        return tf.expandDims(
+                                            t1.mul(
+                                                tfex.mergeShape(
+                                                    tf.transpose(b, [0, 2, 1])
+                                                    , [0, 2], 2
+                                                )
+                                            ), [2])
+                                    }
+                                )
+                            )
+                            , [0, 3]
+                        )
+                        , [0, 1]
+                    )
+                    , []
+                )
+                , [1]
+            )
+        )
+    }, "tf.einsum('ijk,ikj->j',a,b)")//[26 19]
 })()
+
+async function testTime(f = () => { }, msg = "msg") {
+    const time = await tf.time(f)
+    console.log(`${msg}--kernelMs: ${time.kernelMs}, wallTimeMs: ${time.wallMs}`);
+}
