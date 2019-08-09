@@ -4,6 +4,7 @@ import * as tf from "@tensorflow/tfjs"
 import * as tfex from "../src"
 import { async } from "q";
 import { TFHUB_SEARCH_PARAM } from "@tensorflow/tfjs-converter/dist/src/executor/graph_model";
+import { reshape } from "@tensorflow/tfjs-layers/dist/exports_layers";
 
 (async () => {
     let a = tf.tensor([
@@ -263,6 +264,25 @@ import { TFHUB_SEARCH_PARAM } from "@tensorflow/tfjs-converter/dist/src/executor
             )
         )
     }, "tf.einsum('ijk,ikj->j',a,b)")//[26 19]
+    console.log("---------")
+    await testTime(() => {
+        a.reshape([-1, 1]).dot(b.reshape([1, -1])).reshape([2, 2, 3, 2, 3, 2])
+
+    }, "tf.einsum('ijk,lmn->ijklmn',a,b)")//[26 19]
+    console.log("---------")
+    tfex.einsum('ikj,lmn->ijklmn', a, b)
+
+    console.log("---------")
+    // console.log("---------")
+    // a.reshape([-1]).mul(b.reshape([-1])).reshape([2, -1]).sum(1).print()//tf.einsum('ijk,ijk->i', a, b)
+    // console.log("---------")
+    // a.reshape([2, -1]).dot(b.reshape([2, -1]).transpose()).sum(0).print()//tf.einsum('hjk,ijk->i', a, b)
+    // console.log("---------")
+    // a.reshape([2, -1]).mul(b.transpose([0, 2, 1]).reshape([2, -1])).sum(1).print()//tf.einsum('ijk,ikj->i',a,b)
+    // console.log("---------")
+    // a.transpose([1, 0, 2]).reshape([2, -1]).mul(b.transpose([0, 2, 1]).transpose([1, 0, 2]).reshape([2, -1])).sum(1).print()//tf.einsum('ijk,ikj->j',a,b)
+    // console.log("---------")
+    // a.reshape([-1, 1]).dot(b.reshape([1, -1])).reshape([2, 2, 3, 2, 3, 2]).print()
 })()
 
 async function testTime(f = () => { }, msg = "msg") {

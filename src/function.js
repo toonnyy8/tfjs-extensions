@@ -82,50 +82,65 @@ export function einsum(subscripts = "", ...operands) {
     }
 
     inputs.forEach((_, idx, arr) => {
-        arr[idx] = arr[idx].split("")
-        // console.log(Math.max(...arr[idx]))
-        arr[idx].forEach(() => {
-
+        arr[idx] = arr[idx].split("").map((val, idx) => {
+            return { target: val, axis: idx }
         })
+        arr[idx].sort(function (a, b) {//由大到小排序
+            if (a.target > b.target) return 1;
+            if (a.target < b.target) return -1;
+            return 0;
+        });
     })
-    console.log(equation)
+    console.log(inputs)
+
+
+    output = output.split("").map((val, idx) => {
+        return { target: val, axis: idx }
+    })
+    output.sort(function (a, b) {//由大到小排序
+        if (a.target > b.target) return 1;
+        if (a.target < b.target) return -1;
+        return 0;
+    });
+    console.log(output)
 
     return tf.tidy(() => {
-        let a = mergeShape(operands[0], [1, 2])
-        let b = mergeShape(operands[1], [1, 2])
-
-        return tf.sum(
-            mergeShape(
-                tf.transpose(
-                    tf.squeeze(
-                        tf.stack(
-                            tf.unstack(
-                                tf.expandDims(
-                                    mergeShape(
-                                        tf.transpose(a, [0, 1, 2])
-                                        , [0, 2], 2
-                                    )
-                                    , [0]
-                                )
-                            ).map(
-                                (t) => {
-                                    return tf.expandDims(
-                                        t.mul(
-                                            mergeShape(
-                                                tf.transpose(b, [0, 2, 1])
-                                                , [0, 2], 2
-                                            )
-                                        ), [2])
-                                }
-                            )
-                        )
-                        , [0, 3]
-                    )
-                    , [0, 1]
-                )
-                , []
-            )
-            , [1]
-        )
+        let i = []
+        operands.forEach((t) => [
+            i.push(t.transpose(inputs[0].map((val) => val.axis)))
+        ])
+        // return tf.sum(
+        //     mergeShape(
+        //         tf.transpose(
+        //             tf.squeeze(
+        //                 tf.stack(
+        //                     tf.unstack(
+        //                         tf.expandDims(
+        //                             mergeShape(
+        //                                 tf.transpose(a, [0, 1, 2])
+        //                                 , [0, 2], 2
+        //                             )
+        //                             , [0]
+        //                         )
+        //                     ).map(
+        //                         (t) => {
+        //                             return tf.expandDims(
+        //                                 t.mul(
+        //                                     mergeShape(
+        //                                         tf.transpose(b, [0, 2, 1])
+        //                                         , [0, 2], 2
+        //                                     )
+        //                                 ), [2])
+        //                         }
+        //                     )
+        //                 )
+        //                 , [0, 3]
+        //             )
+        //             , [0, 1]
+        //         )
+        //         , []
+        //     )
+        //     , [1]
+        // )
     })
 }
