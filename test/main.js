@@ -269,8 +269,6 @@ import { reshape } from "@tensorflow/tfjs-layers/dist/exports_layers";
         a.reshape([-1, 1]).dot(b.reshape([1, -1])).reshape([2, 2, 3, 2, 3, 2])
 
     }, "tf.einsum('ijk,lmn->ijklmn',a,b)")//[26 19]
-    console.log("---------")
-    tfex.einsum('ikj,lmn->ijklmn', a, b)
 
     console.log("---------")
     // console.log("---------")
@@ -283,6 +281,26 @@ import { reshape } from "@tensorflow/tfjs-layers/dist/exports_layers";
     // a.transpose([1, 0, 2]).reshape([2, -1]).mul(b.transpose([0, 2, 1]).transpose([1, 0, 2]).reshape([2, -1])).sum(1).print()//tf.einsum('ijk,ikj->j',a,b)
     // console.log("---------")
     // a.reshape([-1, 1]).dot(b.reshape([1, -1])).reshape([2, 2, 3, 2, 3, 2]).print()
+    console.log("---------")
+    console.log("tf.einsum('ijk,gkh->k',a,b) : [24, 78, 84]")
+    a.reshape([-1, 3]).unstack(0).forEach((t) => t.reshape([-1]).mul(b.transpose([0, 2, 1]).reshape([-1, 3])).sum(0).print())
+    console.log("---------")
+
+    console.log("tf.einsum('ijk,imj->i',a,b) : [70 67]")
+    let b_ = b.transpose([0, 2, 1])
+    await testTime(() => {
+        a.reshape([-1, 1]).dot(b_.reshape([1, -1])).reshape(a.shape.concat(b_.shape)).sum([2, 5]).reshape([-1]).gather(tf.range(0, 4 * 4, 4 + 1, "int32")).reshape([2, 2]).sum(1).print()
+
+    }, "tf.einsum('ijk,imj->i',a,b)")
+    console.log("---------")
+    console.log("tf.einsum('ijk,iml->i',a,b) : [143 143]")
+    await testTime(() => {
+        // a.reshape([-1, 1]).dot(b_.reshape([1, -1])).reshape(a.shape.concat(b_.shape)).sum([1, 2, 4, 5]).reshape([-1]).gather(tf.range(0, 2 * 2, 2 + 1, "int32")).reshape([-1]).sum([]).print()
+        // a.reshape([-1, 1]).dot(b_.reshape([1, -1])).reshape(a.shape.concat(b_.shape)).sum([1, 2, 4, 5]).print()
+        tfex.einsum('ikj,iml->i', a, b).print()
+    }, "tf.einsum('ijk,iml->i',a,b)")
+
+    console.log("---------")
 })()
 
 async function testTime(f = () => { }, msg = "msg") {

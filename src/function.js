@@ -58,7 +58,7 @@ export function mergeShape(tensor = tf.tensor(), axises, at = null) {
 }
 
 export function einsum(subscripts = "", ...operands) {
-    let [equation, inputs, , output] = subscripts.match("^([a-zA-Z,.]+)(->)([a-zA-Z.]*)?$") || [null, null, null, null]
+    let [equation, inputsInfo, , outputInfo] = subscripts.match("^([a-zA-Z,.]+)(->)([a-zA-Z.]*)?$") || [null, null, null, null]
 
     if (operands.find(input => !(input instanceof tf.Tensor)) != undefined || operands.length == 0) {
         console.error(`operands type is not tensor`)
@@ -70,77 +70,89 @@ export function einsum(subscripts = "", ...operands) {
         return
     }
 
-    inputs = inputs.split(",")
-    if (inputs.find(val => val == "") != undefined) {
+    inputsInfo = inputsInfo.split(",")
+    if (inputsInfo.find(val => val == "") != undefined) {
         console.error(`Indices have incorrect format: ${subscripts}`)
         return
     }
 
-    if (inputs.length != operands.length) {
+    if (inputsInfo.length != operands.length) {
         console.error(`Incorrect number of operands`)
         return
     }
 
-    inputs.forEach((_, idx, arr) => {
-        arr[idx] = arr[idx].split("").map((val, idx) => {
-            return { target: val, axis: idx }
-        })
-        arr[idx].sort(function (a, b) {//由大到小排序
-            if (a.target > b.target) return 1;
-            if (a.target < b.target) return -1;
-            return 0;
-        });
+    inputsInfo[0] = inputsInfo[0].split("").map((val, idx) => {
+        return { target: val, axis: idx, common: false }
     })
-    console.log(inputs)
-
-
-    output = output.split("").map((val, idx) => {
-        return { target: val, axis: idx }
-    })
-    output.sort(function (a, b) {//由大到小排序
+    inputsInfo[0].sort(function (a, b) {//由小到大排序
         if (a.target > b.target) return 1;
         if (a.target < b.target) return -1;
         return 0;
     });
-    console.log(output)
+
+    if (inputsInfo.length >= 2) {
+        inputsInfo[1] = inputsInfo[1].split("").map((val, idx) => {
+            return { target: val, axis: idx, common: false }
+        })
+        inputsInfo[1].sort(function (a, b) {//由小到大排序
+            if (a.target > b.target) return 1;
+            if (a.target < b.target) return -1;
+            return 0;
+        });
+        inputsInfo[0].forEach((info) => {
+            info.common = inputsInfo[1].find((info_) => {
+                return info.target == info_.target
+            }) != undefined
+        })
+        inputsInfo[1].forEach((info) => {
+            info.common = inputsInfo[0].find((info_) => {
+                return info.target == info_.target
+            }) != undefined
+        })
+    }
+
+    console.log(inputsInfo)
+
+    outputInfo = outputInfo.split("").map((val, idx) => {
+        return { target: val, axis: idx }
+    })
+    outputInfo.sort(function (a, b) {//由小到大排序
+        if (a.target > b.target) return 1;
+        if (a.target < b.target) return -1;
+        return 0;
+    });
+    console.log(outputInfo)
 
     return tf.tidy(() => {
         let i = []
-        operands.forEach((t) => [
-            i.push(t.transpose(inputs[0].map((val) => val.axis)))
+        operands.forEach((t, idx) => [
+            i.push(t.transpose(inputsInfo[idx].map((info) => info.axis)))
         ])
-        // return tf.sum(
-        //     mergeShape(
-        //         tf.transpose(
-        //             tf.squeeze(
-        //                 tf.stack(
-        //                     tf.unstack(
-        //                         tf.expandDims(
-        //                             mergeShape(
-        //                                 tf.transpose(a, [0, 1, 2])
-        //                                 , [0, 2], 2
-        //                             )
-        //                             , [0]
-        //                         )
-        //                     ).map(
-        //                         (t) => {
-        //                             return tf.expandDims(
-        //                                 t.mul(
-        //                                     mergeShape(
-        //                                         tf.transpose(b, [0, 2, 1])
-        //                                         , [0, 2], 2
-        //                                     )
-        //                                 ), [2])
-        //                         }
-        //                     )
-        //                 )
-        //                 , [0, 3]
-        //             )
-        //             , [0, 1]
-        //         )
-        //         , []
-        //     )
-        //     , [1]
-        // )
+        let sum = inputsInfo.length >= 2 ?
+            inputsInfo[0]
+                .map((info, axis) => !info.common ? axis : undefined)
+                .concat(inputsInfo[1].map((info, axis) => !info.common ? axis + inputsInfo[0].length : undefined))
+                .filter(function (el) {
+                    return el != null;
+                }) : []
+        let step = inputsInfo.length >= 2 ? inputsInfo[0].reduce((last, info, axis) => {
+            return info.common ? last * i[0].shape[axis] : last
+        }, 1) + 1 : 1
+        let stop = inputsInfo.length >= 2 ? (step - 1) ** 2 : inputsInfo[0].reduce((last, info, axis) => {
+            return last * i[0].shape[axis]
+        }, 1)
+
+        console.log(step)
+
+        return i[0]
+            .reshape([-1, 1])
+            .dot(i[1].reshape([1, -1]))
+            .reshape(i[0].shape.concat(i[1].shape))
+            .sum(sum)
+            .reshape([-1])
+            .gather(tf.range(0, stop, step, "int32"))
+            .reshape([-1])
+            .sum([])
+
     })
 }
