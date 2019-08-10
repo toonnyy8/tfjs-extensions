@@ -212,9 +212,34 @@ function einsumSingleInput(subscript = { inputs: null, output: null }, operand =
     })
 }
 
-function einsumMultipleInput(subscript = { inputs: null, output: null }, operands = [tf.tensor()]) {
+function einsumMultipleInput(subscript = { inputs: [""], output: null }, operands = [tf.tensor()]) {
     return tf.tidy(() => {
-        let [x, y] = [operands.shift(), operands.shift()]
+        let inputInfo = {
+            x: subscript.inputs
+                .shift()
+                .split("")
+                .map((tag, axis) => {
+                    return { tag: tag, axis: axis }
+                })
+                .sort((a, b) => {//由小到大排序
+                    if (a.tag > b.tag) return 1;
+                    if (a.tag < b.tag) return -1;
+                    return 0;
+                }),
+            y: subscript.inputs
+                .shift()
+                .split("")
+                .map((tag, axis) => {
+                    return { tag: tag, axis: axis }
+                })
+                .sort((a, b) => {//由小到大排序
+                    if (a.tag > b.tag) return 1;
+                    if (a.tag < b.tag) return -1;
+                    return 0;
+                })
+        }
+
+        let [x, y] = [operands.shift().transpose(), operands.shift().transpose()]
         operands.unshift(
             x
                 .reshape([-1, 1])
