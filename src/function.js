@@ -58,101 +58,179 @@ export function mergeShape(tensor = tf.tensor(), axises, at = null) {
 }
 
 export function einsum(subscripts = "", ...operands) {
-    let [equation, inputsInfo, , outputInfo] = subscripts.match("^([a-zA-Z,.]+)(->)([a-zA-Z.]*)?$") || [null, null, null, null]
+    let subscript = {
+        inputs: null,
+        output: null
+    };
+
+    [, subscript.inputs, , subscript.output] = subscripts.match("^([a-zA-Z,.]+)(->)?([a-zA-Z.]*)?$") || [null, null, null, null]
+
+    if (!subscript.inputs) {
+        console.error(`Indices have incorrect format: ${subscripts}`)
+        return
+    }
 
     if (operands.find(input => !(input instanceof tf.Tensor)) != undefined || operands.length == 0) {
         console.error(`operands type is not tensor`)
         return
     }
 
-    if (!equation) {
+    subscript.inputs = subscript.inputs.split(",")
+    if (subscript.inputs.find(val => val == "") != undefined) {
         console.error(`Indices have incorrect format: ${subscripts}`)
         return
     }
 
-    inputsInfo = inputsInfo.split(",")
-    if (inputsInfo.find(val => val == "") != undefined) {
-        console.error(`Indices have incorrect format: ${subscripts}`)
-        return
-    }
-
-    if (inputsInfo.length != operands.length) {
+    if (subscript.inputs.length != operands.length) {
         console.error(`Incorrect number of operands`)
         return
     }
 
-    inputsInfo[0] = inputsInfo[0].split("").map((val, idx) => {
+    if (subscript.inputs.length == 1) {
+        return einsumSingleInput(subscript, operands[0])
+    } else {
+        return einsumMultipleInput(subscript, operands)
+    }
+
+    subscript.inputs[0] = subscript.inputs[0].split("").map((val, idx) => {
         return { target: val, axis: idx, common: false }
     })
-    inputsInfo[0].sort(function (a, b) {//由小到大排序
+    subscript.inputs[0].sort(function (a, b) {//由小到大排序
         if (a.target > b.target) return 1;
         if (a.target < b.target) return -1;
         return 0;
     });
 
-    if (inputsInfo.length >= 2) {
-        inputsInfo[1] = inputsInfo[1].split("").map((val, idx) => {
+    if (subscript.inputs.length >= 2) {
+        subscript.inputs[1] = subscript.inputs[1].split("").map((val, idx) => {
             return { target: val, axis: idx, common: false }
         })
-        inputsInfo[1].sort(function (a, b) {//由小到大排序
+        subscript.inputs[1].sort(function (a, b) {//由小到大排序
             if (a.target > b.target) return 1;
             if (a.target < b.target) return -1;
             return 0;
         });
-        inputsInfo[0].forEach((info) => {
-            info.common = inputsInfo[1].find((info_) => {
+        subscript.inputs[0].forEach((info) => {
+            info.common = subscript.inputs[1].find((info_) => {
                 return info.target == info_.target
             }) != undefined
         })
-        inputsInfo[1].forEach((info) => {
-            info.common = inputsInfo[0].find((info_) => {
+        subscript.inputs[1].forEach((info) => {
+            info.common = subscript.inputs[0].find((info_) => {
                 return info.target == info_.target
             }) != undefined
         })
     }
 
-    console.log(inputsInfo)
+    console.log(subscript.inputs)
 
-    outputInfo = outputInfo.split("").map((val, idx) => {
+    subscript.output = subscript.output.split("").map((val, idx) => {
         return { target: val, axis: idx }
     })
-    outputInfo.sort(function (a, b) {//由小到大排序
+    subscript.output.sort(function (a, b) {//由小到大排序
         if (a.target > b.target) return 1;
         if (a.target < b.target) return -1;
         return 0;
     });
-    console.log(outputInfo)
+    console.log(subscript.output)
 
     return tf.tidy(() => {
         let i = []
         operands.forEach((t, idx) => [
-            i.push(t.transpose(inputsInfo[idx].map((info) => info.axis)))
+            i.push(t.transpose(subscript.inputs[idx].map((info) => info.axis)))
         ])
-        let sum = inputsInfo.length >= 2 ?
-            inputsInfo[0]
+        let sum = subscript.inputs.length >= 2 ?
+            subscript.inputs[0]
                 .map((info, axis) => !info.common ? axis : undefined)
-                .concat(inputsInfo[1].map((info, axis) => !info.common ? axis + inputsInfo[0].length : undefined))
+                .concat(subscript.inputs[1].map((info, axis) => !info.common ? axis + subscript.inputs[0].length : undefined))
                 .filter(function (el) {
                     return el != null;
                 }) : []
-        let step = inputsInfo.length >= 2 ? inputsInfo[0].reduce((last, info, axis) => {
+        let step = subscript.inputs.length >= 2 ? subscript.inputs[0].reduce((last, info, axis) => {
             return info.common ? last * i[0].shape[axis] : last
         }, 1) + 1 : 1
-        let stop = inputsInfo.length >= 2 ? (step - 1) ** 2 : inputsInfo[0].reduce((last, info, axis) => {
+        let stop = subscript.inputs.length >= 2 ? (step - 1) ** 2 : subscript.inputs[0].reduce((last, info, axis) => {
             return last * i[0].shape[axis]
         }, 1)
 
         console.log(step)
 
-        return i[0]
-            .reshape([-1, 1])
-            .dot(i[1].reshape([1, -1]))
-            .reshape(i[0].shape.concat(i[1].shape))
+        // if (subscript.inputs.length == 1) {
+        //     return i[0]
+        //         .sum(sum)
+        //         .reshape([-1])
+        //         .gather(tf.range(0, stop, step, "int32"))
+        //         .reshape([-1])
+        //         .sum([])
+        //     // .transpose([])
+        // } else {
+        //     return einsum("",
+        //         i[0]
+        //             .reshape([-1, 1])
+        //             .dot(i[1].reshape([1, -1]))
+        //             .reshape(i[0].shape.concat(i[1].shape)),
+        //         ...operands
+        //     )
+        // }
+
+        if (subscript.inputs.length == 1) {
+            return i[0]
+                .sum(sum)
+            // .transpose([])
+        } else if (subscript.inputs.length == 2) {
+            return i[0]
+                .reshape([-1, 1])
+                .dot(i[1].reshape([1, -1]))
+                .reshape(i[0].shape.concat(i[1].shape))
+                .sum(sum)
+                .reshape([-1])
+                .gather(tf.range(0, stop, step, "int32"))
+                .reshape([-1])
+                .sum([])
+            // .transpose([])
+        } else {
+            return einsum("",
+                i[0]
+                    .reshape([-1, 1])
+                    .dot(i[1].reshape([1, -1]))
+                    .reshape(i[0].shape.concat(i[1].shape)),
+                ...operands
+            )
+        }
+    })
+}
+
+function einsumSingleInput(subscript = { inputs: null, output: null }, operand = tf.tensor()) {
+    return tf.tidy(() => {
+        return operand
             .sum(sum)
             .reshape([-1])
             .gather(tf.range(0, stop, step, "int32"))
             .reshape([-1])
             .sum([])
+            .transpose([])
+    })
+}
 
+function einsumMultipleInput(subscript = { inputs: null, output: null }, operands = [tf.tensor()]) {
+    return tf.tidy(() => {
+        let [x, y] = [operands.shift(), operands.shift()]
+        operands.unshift(
+            x
+                .reshape([-1, 1])
+                .dot(y.reshape([1, -1]))
+                .reshape(x.shape.concat(y.shape))
+            // .sum(sum)
+            // .reshape([-1])
+            // .gather(tf.range(0, stop, step, "int32"))
+            // .reshape([-1])
+            // .sum([])
+            // .transpose([])
+        )
+        if (subscript.inputs.length == 1) {
+            return einsumSingleInput(subscript, operands[0])
+        } else {
+            return einsumMultipleInput(subscript, operands)
+        }
     })
 }
