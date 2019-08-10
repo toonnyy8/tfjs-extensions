@@ -299,6 +299,7 @@ import { reshape } from "@tensorflow/tfjs-layers/dist/exports_layers";
         // a.reshape([-1, 1]).dot(b_.reshape([1, -1])).reshape(a.shape.concat(b_.shape)).sum([1, 2, 4, 5]).print()
         tfex.einsum('ikj,iml->i', a, b)//.print()
     }, "tf.einsum('ijk,iml->i',a,b)")
+    // a.reshape([-1, 1]).dot(b_.reshape([1, -1])).reshape(a.shape.concat(b_.shape)).sum([1, 2, 3, 4, 5]).reshape([-1]).gather(tf.range(0, 2 * 2, 2 + 1, "int32")).reshape([-1]).sum([]).print()
 
     console.log("---------")
 })()

@@ -200,10 +200,21 @@ export function einsum(subscripts = "", ...operands) {
     })
 }
 
-function einsumSingleInput(subscript = { inputs: null, output: null }, operand = tf.tensor()) {
+function einsumSingleInput(subscript = { inputs: [""], output: null }, operand = tf.tensor()) {
     return tf.tidy(() => {
+        let tagSum = subscript.inputs[0].split("").map((tag, axis, tags) => {
+            let temp = tags.slice()
+            temp.splice(axis, 1)
+            if (temp.find((otherTag, i, arr) => otherTag == tag) == undefined) {
+                if (subscript.output.split("").find((outputTag) => outputTag == tag) == undefined) {
+                    return axis
+                }
+            }
+        }).filter((axis) => axis != null)
+
+
         return operand
-            .sum(sum)
+            .sum(tagSum)
             .reshape([-1])
             .gather(tf.range(0, stop, step, "int32"))
             .reshape([-1])
@@ -239,7 +250,11 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
                 })
         }
 
-        let [x, y] = [operands.shift().transpose(), operands.shift().transpose()]
+        let [x, y] = [
+            operands.shift().transpose(inputInfo.x.map((info) => info.axis)),
+            operands.shift().transpose(inputInfo.y.map((info) => info.axis))
+        ]
+
         operands.unshift(
             x
                 .reshape([-1, 1])
@@ -252,6 +267,15 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
             // .sum([])
             // .transpose([])
         )
+        subscript.inputs.unshift(
+            inputInfo.x
+                .reduce((last, info) => last + info.tag, "")
+                .concat(
+                    inputInfo.y
+                        .reduce((last, info) => last + info.tag, "")
+                )
+        )
+
         if (subscript.inputs.length == 1) {
             return einsumSingleInput(subscript, operands[0])
         } else {
