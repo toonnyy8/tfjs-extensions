@@ -164,39 +164,32 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
             .transpose(outputInfo.map((info) => info.axis))
     })
 }
-function diagIndices(diag = [[]]) {
-    let diag_ = JSON.parse(JSON.stringify(diag))
-    return tf.tidy(() => {
-        let indices = tf.ones([1], "int32")
-        diag_.forEach((tagsDim) => {
-            let dim = tagsDim[0]
-            if (tagsDim.length > 1) {
-                for (; tagsDim.length > 1; dim = tagsDim.pop()) {
-                    indices = indices
-                        .reshape([-1, 1])
-                        .dot(tf.tidy(() => {
-                            let indices = tf.range(0, dim ** 2, dim + 1, "int32")
-                            return tf.scatterND(indices, tf.ones(indices.shape, "int32"), [dim ** 2])
-                        })
-                            .reshape([1, -1])
-                        )
-                }
-            } else {
-                indices = indices
-                    .reshape([-1, 1])
-                    .dot(tf.ones([1, dim], "int32"))
-            }
-        })
-        let indicesBuffer = indices.reshape([-1]).bufferSync()
-        indices.dispose()
-        indices = []
-        for (let i = 0; i < indicesBuffer.size; i++) {
-            if (indicesBuffer.values[i]) {
-                indices.push(i)
-            }
+function diagIndices(diagShape = [[]]) {
+    let diagShape_ = JSON.parse(JSON.stringify(diagShape))
+    let getDiagIndices = (dim, edgeNum) => {
+        let stop = dim ** edgeNum
+        let step = 1
+
+        for (let i = 1; i < edgeNum; i++) {
+            step = step * dim + 1
         }
-        indices = tf.tensor(indices).cast("int32")
-        return [indices, diag_]
+        return [stop, step]
+    }
+    return tf.tidy(() => {
+        let pre = 1
+        let indices = tf.range(0, diagShape_.flat().reduce((last, dim) => last * dim, 1), 1, "int32")
+        for (let i = 0; i < diagShape_.length; i++) {
+            if (diagShape_[i].length > 1) {
+                let [stop, step] = getDiagIndices(diagShape_[i][0], diagShape_[i].length)
+                indices = indices
+                    .reshape([pre, diagShape_[i].reduce((last, dim) => last * dim, 1), -1])
+                    .gather(tf.range(0, stop, step, "int32"), 1)
+            }
+            pre *= diagShape_[i][0]
+        }
+        indices = indices.reshape(diagShape_.map((dim) => dim[0]))
+        console.log(indices.shape)
+        return [indices, indices.shape]
     })
 }
 
@@ -237,12 +230,6 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
                 .reshape([-1, 1])
                 .dot(y.reshape([1, -1]))
                 .reshape(x.shape.concat(y.shape))
-            // .sum(sum)
-            // .reshape([-1])
-            // .gather(tf.range(0, stop, step, "int32"))
-            // .reshape([-1])
-            // .sum([])
-            // .transpose([])
         )
         subscript.inputs.unshift(
             inputInfo.x
