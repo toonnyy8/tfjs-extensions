@@ -62,8 +62,13 @@ export function einsum(subscripts = "", ...operands) {
         inputs: null,
         output: null
     };
+    let _
+    [, subscript.inputs, _, subscript.output] = subscripts.match("^([a-zA-Z,.]+)(->)?([a-zA-Z.]*)?$") || [null, null, null, null]
 
-    [, subscript.inputs, , subscript.output] = subscripts.match("^([a-zA-Z,.]+)(->)?([a-zA-Z.]*)?$") || [null, null, null, null]
+    if (_ == null) {
+        console.error(`Need "->"`)
+        return
+    }
 
     if (!subscript.inputs) {
         console.error(`Indices have incorrect format: ${subscripts}`)
@@ -86,136 +91,20 @@ export function einsum(subscripts = "", ...operands) {
         return
     }
 
+    if (subscript.output == null) {
+        subscript.output = ""
+    }
+
     if (subscript.inputs.length == 1) {
         return einsumSingleInput(subscript, operands[0])
     } else {
         return einsumMultipleInput(subscript, operands)
     }
-
-    subscript.inputs[0] = subscript.inputs[0].split("").map((val, idx) => {
-        return { target: val, axis: idx, common: false }
-    })
-    subscript.inputs[0].sort(function (a, b) {//由小到大排序
-        if (a.target > b.target) return 1;
-        if (a.target < b.target) return -1;
-        return 0;
-    });
-
-    if (subscript.inputs.length >= 2) {
-        subscript.inputs[1] = subscript.inputs[1].split("").map((val, idx) => {
-            return { target: val, axis: idx, common: false }
-        })
-        subscript.inputs[1].sort(function (a, b) {//由小到大排序
-            if (a.target > b.target) return 1;
-            if (a.target < b.target) return -1;
-            return 0;
-        });
-        subscript.inputs[0].forEach((info) => {
-            info.common = subscript.inputs[1].find((info_) => {
-                return info.target == info_.target
-            }) != undefined
-        })
-        subscript.inputs[1].forEach((info) => {
-            info.common = subscript.inputs[0].find((info_) => {
-                return info.target == info_.target
-            }) != undefined
-        })
-    }
-
-    console.log(subscript.inputs)
-
-    subscript.output = subscript.output.split("").map((val, idx) => {
-        return { target: val, axis: idx }
-    })
-    subscript.output.sort(function (a, b) {//由小到大排序
-        if (a.target > b.target) return 1;
-        if (a.target < b.target) return -1;
-        return 0;
-    });
-    console.log(subscript.output)
-
-    return tf.tidy(() => {
-        let i = []
-        operands.forEach((t, idx) => [
-            i.push(t.transpose(subscript.inputs[idx].map((info) => info.axis)))
-        ])
-        let sum = subscript.inputs.length >= 2 ?
-            subscript.inputs[0]
-                .map((info, axis) => !info.common ? axis : undefined)
-                .concat(subscript.inputs[1].map((info, axis) => !info.common ? axis + subscript.inputs[0].length : undefined))
-                .filter(function (el) {
-                    return el != null;
-                }) : []
-        let step = subscript.inputs.length >= 2 ? subscript.inputs[0].reduce((last, info, axis) => {
-            return info.common ? last * i[0].shape[axis] : last
-        }, 1) + 1 : 1
-        let stop = subscript.inputs.length >= 2 ? (step - 1) ** 2 : subscript.inputs[0].reduce((last, info, axis) => {
-            return last * i[0].shape[axis]
-        }, 1)
-
-        console.log(step)
-
-        // if (subscript.inputs.length == 1) {
-        //     return i[0]
-        //         .sum(sum)
-        //         .reshape([-1])
-        //         .gather(tf.range(0, stop, step, "int32"))
-        //         .reshape([-1])
-        //         .sum([])
-        //     // .transpose([])
-        // } else {
-        //     return einsum("",
-        //         i[0]
-        //             .reshape([-1, 1])
-        //             .dot(i[1].reshape([1, -1]))
-        //             .reshape(i[0].shape.concat(i[1].shape)),
-        //         ...operands
-        //     )
-        // }
-
-        if (subscript.inputs.length == 1) {
-            return i[0]
-                .sum(sum)
-            // .transpose([])
-        } else if (subscript.inputs.length == 2) {
-            return i[0]
-                .reshape([-1, 1])
-                .dot(i[1].reshape([1, -1]))
-                .reshape(i[0].shape.concat(i[1].shape))
-                .sum(sum)
-                .reshape([-1])
-                .gather(tf.range(0, stop, step, "int32"))
-                .reshape([-1])
-                .sum([])
-            // .transpose([])
-        } else {
-            return einsum("",
-                i[0]
-                    .reshape([-1, 1])
-                    .dot(i[1].reshape([1, -1]))
-                    .reshape(i[0].shape.concat(i[1].shape)),
-                ...operands
-            )
-        }
-    })
 }
 
-function einsumSingleInput(subscript = { inputs: [""], output: null }, operand = tf.tensor()) {
-    console.log(subscript)
-    console.log(operand.shape)
+function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = tf.tensor()) {
     return tf.tidy(() => {
-        let tagSum = subscript.inputs[0].split("").map((tag, axis, tags) => {
-            let temp = tags.slice()
-            temp.splice(axis, 1)
-            if (temp.find((otherTag, i, arr) => otherTag == tag) == undefined) {
-                if (subscript.output.split("").find((outputTag) => outputTag == tag) == undefined) {
-                    return axis
-                }
-            }
-        }).filter((axis) => axis != null)
-
-        let inputInfo = subscript.inputs
-            .shift()
+        let inputInfo = subscript.inputs[0]
             .split("")
             .map((tag, axis) => {
                 return { tag: tag, axis: axis, dim: operand.shape[axis] }
@@ -225,12 +114,25 @@ function einsumSingleInput(subscript = { inputs: [""], output: null }, operand =
                 if (a.tag < b.tag) return -1;
                 return 0;
             })
-        console.log(inputInfo)
 
-        let a = inputInfo.reduce((last, info) => {
+        let outputInfo = subscript.output == "" ? [] : subscript.output
+            .split("")
+            .map((tag, axis) => {
+                if (subscript.inputs[0].search(tag) == -1) {
+                    console.error(`Output Tag_${tag} does not exist`)
+                }
+                return { tag: tag, axis: axis }
+            })
+            .sort((a, b) => {//由小到大排序
+                if (a.tag > b.tag) return 1;
+                if (a.tag < b.tag) return -1;
+                return 0;
+            })
+
+        let diadInfo = inputInfo.reduce((last, info) => {
             if (last[info.tag]) {
                 if (last[info.tag][0] != info.dim) {
-                    console.error("Tags ${info.tag} are inconsistent")
+                    console.error(`Dim of Tag_${info.tag} are inconsistent`)
                 } else {
                     last[info.tag].push(info.dim)
                 }
@@ -239,26 +141,62 @@ function einsumSingleInput(subscript = { inputs: [""], output: null }, operand =
             }
             return last
         }, {})
-        console.log(a)
-        console.log(operand.
-            transpose(inputInfo.map((info) => info.axis)).shape)
 
-        return tf.gatherND(
-            operand.
-                transpose(inputInfo.map((info) => info.axis))
-                .reshape([-1]),
-            // .gather(tf.range(0, stop, step, "int32"))
-            gatherIndices()
-        )
+        let diagShape = Object.values(diadInfo)
+
+        let [indices, newShape] = diagIndices(diagShape)
+        newShape = newShape.flat()
+
+        let tagSum = Object.keys(diadInfo)
+            .reduce((last, tag, axis) => {
+                if (subscript.output.search(tag) == -1) {
+                    last.push(axis)
+                }
+                return last
+            }, [])
+
+        return operand.
+            transpose(inputInfo.map((info) => info.axis))
             .reshape([-1])
-            .sum([])
-            .transpose([])
+            .gather(indices)
+            .reshape(newShape)
+            .sum(tagSum)
+            .transpose(outputInfo.map((info) => info.axis))
     })
 }
-function gatherIndices(edge, pow) {
+function diagIndices(diag = [[]]) {
+    let diag_ = JSON.parse(JSON.stringify(diag))
     return tf.tidy(() => {
-        let indices = tf.range(0, stop, step, "int32")
-        return tf.scatterND(indices, tf.ones(indices.shape), stop)
+        let indices = tf.ones([1], "int32")
+        diag_.forEach((tagsDim) => {
+            let dim = tagsDim[0]
+            if (tagsDim.length > 1) {
+                for (; tagsDim.length > 1; dim = tagsDim.pop()) {
+                    indices = indices
+                        .reshape([-1, 1])
+                        .dot(tf.tidy(() => {
+                            let indices = tf.range(0, dim ** 2, dim + 1, "int32")
+                            return tf.scatterND(indices, tf.ones(indices.shape, "int32"), [dim ** 2])
+                        })
+                            .reshape([1, -1])
+                        )
+                }
+            } else {
+                indices = indices
+                    .reshape([-1, 1])
+                    .dot(tf.ones([1, dim], "int32"))
+            }
+        })
+        let indicesBuffer = indices.reshape([-1]).bufferSync()
+        indices.dispose()
+        indices = []
+        for (let i = 0; i < indicesBuffer.size; i++) {
+            if (indicesBuffer.values[i]) {
+                indices.push(i)
+            }
+        }
+        indices = tf.tensor(indices).cast("int32")
+        return [indices, diag_]
     })
 }
 
