@@ -201,6 +201,8 @@ export function einsum(subscripts = "", ...operands) {
 }
 
 function einsumSingleInput(subscript = { inputs: [""], output: null }, operand = tf.tensor()) {
+    console.log(subscript)
+    console.log(operand.shape)
     return tf.tidy(() => {
         let tagSum = subscript.inputs[0].split("").map((tag, axis, tags) => {
             let temp = tags.slice()
@@ -212,14 +214,51 @@ function einsumSingleInput(subscript = { inputs: [""], output: null }, operand =
             }
         }).filter((axis) => axis != null)
 
+        let inputInfo = subscript.inputs
+            .shift()
+            .split("")
+            .map((tag, axis) => {
+                return { tag: tag, axis: axis, dim: operand.shape[axis] }
+            })
+            .sort((a, b) => {//由小到大排序
+                if (a.tag > b.tag) return 1;
+                if (a.tag < b.tag) return -1;
+                return 0;
+            })
+        console.log(inputInfo)
 
-        return operand
-            .sum(tagSum)
-            .reshape([-1])
-            .gather(tf.range(0, stop, step, "int32"))
+        let a = inputInfo.reduce((last, info) => {
+            if (last[info.tag]) {
+                if (last[info.tag][0] != info.dim) {
+                    console.error("Tags ${info.tag} are inconsistent")
+                } else {
+                    last[info.tag].push(info.dim)
+                }
+            } else {
+                last[info.tag] = [info.dim]
+            }
+            return last
+        }, {})
+        console.log(a)
+        console.log(operand.
+            transpose(inputInfo.map((info) => info.axis)).shape)
+
+        return tf.gatherND(
+            operand.
+                transpose(inputInfo.map((info) => info.axis))
+                .reshape([-1]),
+            // .gather(tf.range(0, stop, step, "int32"))
+            gatherIndices()
+        )
             .reshape([-1])
             .sum([])
             .transpose([])
+    })
+}
+function gatherIndices(edge, pow) {
+    return tf.tidy(() => {
+        let indices = tf.range(0, stop, step, "int32")
+        return tf.scatterND(indices, tf.ones(indices.shape), stop)
     })
 }
 
