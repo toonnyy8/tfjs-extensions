@@ -145,8 +145,7 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
 
         let diagShape = Object.values(diadInfo)
 
-        let [indices, newShape] = diagIndices(diagShape)
-        newShape = newShape.flat()
+        let indices = diagIndices(diagShape)
 
         let tagSum = Object.keys(diadInfo)
             .reduce((last, tag, axis) => {
@@ -160,7 +159,6 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
         transpose(inputInfo.map((info) => info.axis))
             .reshape([-1])
             .gather(indices)
-            .reshape(newShape)
             .sum(tagSum)
             .transpose(outputInfo.map((info) => info.axis))
     })
@@ -192,8 +190,7 @@ function diagIndices(diagShape = [
             pre *= diagShape_[i][0]
         }
         indices = indices.reshape(diagShape_.map((dim) => dim[0]))
-        console.log(indices.shape)
-        return [indices, indices.shape]
+        return indices
     })
 }
 

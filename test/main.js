@@ -4,6 +4,7 @@ import * as tf from "@tensorflow/tfjs"
 import * as tfex from "../src"
 
 (async() => {
+    console.log(tf.memory())
     let a = tf.tensor([
         [
             [1, 4, 2],
@@ -43,6 +44,12 @@ import * as tfex from "../src"
         tfex.einsum('ijk,iml->', a, b).print()
     }, "tf.einsum('ijk,iml->',a,b)")
     console.log("---------")
+    await testTime(() => {
+        tfex.einsum('ijk,imj->ij', a, b).print()
+    }, "tf.einsum('ijk,imj->ij',a,b)")
+    console.log("---------")
+    console.log(tf.memory())
+
 })()
 
 async function testTime(f = () => {}, msg = "msg") {
