@@ -25,7 +25,7 @@ export function mergeShape(tensor = tf.tensor(), axises, at = null) {
                 console.error("axis ${at} is not at axises")
             }
 
-            axises.sort(function (a, b) {//由大到小排序
+            axises.sort(function(a, b) { //由大到小排序
                 if (a > b) return -1;
                 if (a < b) return 1;
                 return 0;
@@ -62,7 +62,8 @@ export function einsum(subscripts = "", ...operands) {
         inputs: null,
         output: null
     };
-    let _
+    let _;
+
     [, subscript.inputs, _, subscript.output] = subscripts.match("^([a-zA-Z,.]+)(->)?([a-zA-Z.]*)?$") || [null, null, null, null]
 
     if (_ == null) {
@@ -109,7 +110,7 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
             .map((tag, axis) => {
                 return { tag: tag, axis: axis, dim: operand.shape[axis] }
             })
-            .sort((a, b) => {//由小到大排序
+            .sort((a, b) => { //由小到大排序
                 if (a.tag > b.tag) return 1;
                 if (a.tag < b.tag) return -1;
                 return 0;
@@ -123,7 +124,7 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
                 }
                 return { tag: tag, axis: axis }
             })
-            .sort((a, b) => {//由小到大排序
+            .sort((a, b) => { //由小到大排序
                 if (a.tag > b.tag) return 1;
                 if (a.tag < b.tag) return -1;
                 return 0;
@@ -156,7 +157,7 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
             }, [])
 
         return operand.
-            transpose(inputInfo.map((info) => info.axis))
+        transpose(inputInfo.map((info) => info.axis))
             .reshape([-1])
             .gather(indices)
             .reshape(newShape)
@@ -164,7 +165,10 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
             .transpose(outputInfo.map((info) => info.axis))
     })
 }
-function diagIndices(diagShape = [[]]) {
+
+function diagIndices(diagShape = [
+    []
+]) {
     let diagShape_ = JSON.parse(JSON.stringify(diagShape))
     let getDiagIndices = (dim, edgeNum) => {
         let stop = dim ** edgeNum
@@ -202,7 +206,7 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
                 .map((tag, axis) => {
                     return { tag: tag, axis: axis }
                 })
-                .sort((a, b) => {//由小到大排序
+                .sort((a, b) => { //由小到大排序
                     if (a.tag > b.tag) return 1;
                     if (a.tag < b.tag) return -1;
                     return 0;
@@ -213,7 +217,7 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
                 .map((tag, axis) => {
                     return { tag: tag, axis: axis }
                 })
-                .sort((a, b) => {//由小到大排序
+                .sort((a, b) => { //由小到大排序
                     if (a.tag > b.tag) return 1;
                     if (a.tag < b.tag) return -1;
                     return 0;
@@ -227,17 +231,17 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
 
         operands.unshift(
             x
-                .reshape([-1, 1])
-                .dot(y.reshape([1, -1]))
-                .reshape(x.shape.concat(y.shape))
+            .reshape([-1, 1])
+            .dot(y.reshape([1, -1]))
+            .reshape(x.shape.concat(y.shape))
         )
         subscript.inputs.unshift(
             inputInfo.x
+            .reduce((last, info) => last + info.tag, "")
+            .concat(
+                inputInfo.y
                 .reduce((last, info) => last + info.tag, "")
-                .concat(
-                    inputInfo.y
-                        .reduce((last, info) => last + info.tag, "")
-                )
+            )
         )
 
         if (subscript.inputs.length == 1) {

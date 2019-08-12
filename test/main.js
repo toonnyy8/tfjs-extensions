@@ -2,11 +2,8 @@ import "@babel/polyfill"
 
 import * as tf from "@tensorflow/tfjs"
 import * as tfex from "../src"
-import { async } from "q";
-import { TFHUB_SEARCH_PARAM } from "@tensorflow/tfjs-converter/dist/src/executor/graph_model";
-import { reshape } from "@tensorflow/tfjs-layers/dist/exports_layers";
 
-(async () => {
+(async() => {
     let a = tf.tensor([
         [
             [1, 4, 2],
@@ -48,7 +45,7 @@ import { reshape } from "@tensorflow/tfjs-layers/dist/exports_layers";
     console.log("---------")
 })()
 
-async function testTime(f = () => { }, msg = "msg") {
+async function testTime(f = () => {}, msg = "msg") {
     const time = await tf.time(f)
     console.log(`${msg}--kernelMs: ${time.kernelMs}, wallTimeMs: ${time.wallMs}`);
 }
