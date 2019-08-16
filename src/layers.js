@@ -72,6 +72,9 @@ export class LayerNormalization extends tf.layers.Layer {
 export function layerNormalization(init = { axis }) {
     return new LayerNormalization(init)
 }
+// registerClass
+tf.serialization.registerClass(LayerNormalization)
+
 
 
 export class Lambda extends tf.layers.Layer {
@@ -107,3 +110,6 @@ export class Lambda extends tf.layers.Layer {
 export function lambda({ func = () => { }, outputShape = null }) {
     return new Lambda({ func, outputShape })
 }
+
+// registerClass
+tf.serialization.registerClass(Lambda)
