@@ -1,6 +1,6 @@
 import * as tf from "@tensorflow/tfjs"
 
-
+// https://github.com/GistNoesis/Wisteria/blob/master/tfjs/src/LayerNorm.js
 export class LayerNormalization extends tf.layers.Layer {
     constructor(args) {
         super({});
