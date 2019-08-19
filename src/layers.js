@@ -79,10 +79,9 @@ tf.serialization.registerClass(LayerNormalization)
 
 
 export class Lambda extends tf.layers.Layer {
-    constructor({ func = () => { }, outputShape = null }) {
+    constructor({ func = () => { } }) {
         super({})
         this.func = func
-        this.oS = outputShape
     }
 
     apply(inputs, kwargs) {
@@ -121,8 +120,6 @@ export class Lambda extends tf.layers.Layer {
             }
 
         })
-
-        return this.oS || inputShape
     }
 
     /*
@@ -134,8 +131,8 @@ export class Lambda extends tf.layers.Layer {
     }
 }
 
-export function lambda({ func = () => { }, outputShape = null }) {
-    return new Lambda({ func, outputShape })
+export function lambda({ func = () => { } }) {
+    return new Lambda({ func })
 }
 
 // registerClass
