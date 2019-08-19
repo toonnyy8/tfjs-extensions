@@ -1,4 +1,5 @@
 import * as tf from "@tensorflow/tfjs"
+import { TypeFlags } from "typescript";
 
 // https://github.com/GistNoesis/Wisteria/blob/master/tfjs/src/LayerNorm.js
 export class LayerNormalization extends tf.layers.Layer {
@@ -95,6 +96,32 @@ export class Lambda extends tf.layers.Layer {
     }
 
     computeOutputShape(inputShape) {
+        console.log("compute output shape : ", inputShape)
+        return tf.tidy(() => {
+            let tempInput
+            let tempOutput
+            if (inputShape[0] != null) {
+                tempInput = inputShape.map((shape) => {
+                    shape.shift()
+                    return tf.ones(shape)
+                })
+                tempOutput = this.func(...tempInput)
+            } else {
+                inputShape.shift()
+                tempInput = tf.ones(inputShape)
+                tempOutput = this.func(tempInput)
+            }
+
+            if (tempOutput instanceof tf.Tensor) {
+                return [null].concat(tempOutput.shape)
+            } else {
+                return tempOutput.map((t) => {
+                    return [null].concat(t.shape)
+                })
+            }
+
+        })
+
         return this.oS || inputShape
     }
 
