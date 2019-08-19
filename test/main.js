@@ -58,5 +58,7 @@ import * as tfex from "../src"
 // }
 
 let a = tfex.layers.lambda({ func: (x, y) => { return [tf.add(x, y), tf.add(x, y), tf.add(x, y)] }, outputShape: [3] })
-console.log(a.apply([tf.input({ shape: [3] }), tf.input({ shape: [3] })]))
-console.log(a.apply([tf.tensor([1, 2, 3]), tf.tensor([1, 2, 3])]))
+console.log(tf.memory())
+a.apply([tf.input({ shape: [3] }), tf.input({ shape: [3] })])
+console.log(tf.memory())
+
