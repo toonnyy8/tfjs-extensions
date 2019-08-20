@@ -12,8 +12,8 @@ export class VariableScope {
         return VariableScope.scopeList[this.scopeName]
     }
 
-    with(f = (scope = this, scopeName = `${this.scopeName}/`) => { }) {
-        f(this, `${this.scopeName}/`)
+    with(func = (scope = this, scopeName = `${this.scopeName}/`) => { }) {
+        return tf.tidy(() => func(this, `${this.scopeName}/`))
     }
 
     variableScope(name) {
@@ -27,9 +27,20 @@ export class VariableScope {
         return this._variableList[name]
     }
 
+    dispose(name) {
+        if (name != null) {
+            this._variableList[name].dispose()
+            delete this._variableList[name]
+        } else {
+            Object.keys(this._variableList).forEach((key) => {
+                this._variableList[key].dispose()
+            })
+            this._variableList = {}
+        }
+    }
+
 }
 VariableScope.scopeList = {}
-
 
 export function variableScope(name) {
     return new VariableScope(name)
