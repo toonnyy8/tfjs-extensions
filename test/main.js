@@ -57,10 +57,26 @@ import * as tfex from "../src"
 //     console.log(`${msg}--kernelMs: ${time.kernelMs}, wallTimeMs: ${time.wallMs}`);
 // }
 
-let a = tfex.layers.lambda({ func: (x, y) => { return [tf.add(x, y), tf.add(x, y), tf.add(x, y)] } })
-console.log(tf.memory())
-console.log(
-    a.apply([tf.input({ shape: [3] }), tf.input({ shape: [3] })])
-)
+// let a = tfex.layers.lambda({ func: (x, y) => { return [tf.add(x, y), tf.add(x, y), tf.add(x, y)] } })
+// console.log(tf.memory())
+// console.log(
+//     a.apply([tf.input({ shape: [3] }), tf.input({ shape: [3] })])
+// )
+// console.log(tf.memory())
+
 console.log(tf.memory())
 
+let vS = tfex.scope.variableScope("G")
+
+vS.with((scope) => {
+    scope.variableScope("FF").with((scope, n) => {
+        let a = scope.getVariable("qkv", [1, 1, 3])
+        tfex.scope.variableScope(n + "layers").with((_, n) => {
+            console.log(n)
+        })
+    })
+    let a = scope.getVariable("qkv", [1, 1, 3])
+    console.log(tfex.scope.VariableScope)
+})
+
+console.log(tf.memory())
