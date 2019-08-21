@@ -2,18 +2,14 @@ import * as tf from "@tensorflow/tfjs"
 
 export class VariableScope {
     constructor(name) {
-        this.scopeName = name == undefined ? "" : name
+        this.scopeName = `${name == undefined ? "" : name}`
 
-        if (Object.keys(VariableScope.scopeList).find((scopeListName) => this.scopeName == scopeListName) == undefined) {
+        if (Object.keys(VariableScope._scopeList).find((scopeListName) => this.scopeName == scopeListName) == undefined) {
             this._variableList = {}
-            VariableScope.scopeList[this.scopeName] = this
+            VariableScope._scopeList[this.scopeName] = this
         }
 
-        return VariableScope.scopeList[this.scopeName]
-    }
-
-    with(func = (scope = this, scopeName = `${this.scopeName}/`) => { }) {
-        return tf.tidy(() => func(this, `${this.scopeName}/`))
+        return VariableScope._scopeList[this.scopeName]
     }
 
     variableScope(name) {
@@ -39,9 +35,9 @@ export class VariableScope {
         }
     }
 
-}
-VariableScope.scopeList = {}
+    get scopeList() {
+        return JSON.parse(JSON.stringify(VariableScope._scopeList))
+    }
 
-export function variableScope(name) {
-    return new VariableScope(name)
 }
+VariableScope._scopeList = {}

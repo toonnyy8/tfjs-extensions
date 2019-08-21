@@ -3,6 +3,6 @@ export { layers }
 
 export * from "./function"
 
-import * as scope from "./scope"
+import {VariableScope} from "./scope"
 
-export { scope }
+export let scope = new VariableScope("")

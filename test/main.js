@@ -66,29 +66,17 @@ import * as tfex from "../src"
 
 console.log(tf.memory())
 
-let vS = tfex.scope.variableScope("G")
+tf.tidy(() => {
+    tfex.scope.getVariable("1", [3])
 
-vS.with((scope) => {
-    scope.variableScope("FF").with((scope, n) => {
-        let a = scope.getVariable("qkv", [1, 1, 3])
-        a.print()
-        tfex.scope.variableScope(n + "layers").with((_, n) => {
-            let a = _.getVariable("qkv", [1, 3, 1])
-            _.getVariable("qkv2", [1, 3, 1])
-        })
-    })
-    let a = scope.getVariable("qkv", [3, 1, 1])
-})
-let c
-vS.with((scope) => {
-    return scope.variableScope("FF").with((scope, n) => {
-        return tfex.scope.variableScope(n + "layers").with((_, n) => {
-            _.dispose("qkv2")
-            c = tf.tensor([1])
-            return c
-        })
+    tf.tidy(() => {
+        let FF = tfex.scope.variableScope("FF")
+        for (let i = 0; i < 6; i++) {
+            FF.getVariable(`layer_${i}`, [1, 1, 1])
+        }
     })
 })
-c.print()
+console.log(tfex.scope.scopeList)
+
 
 console.log(tf.memory())
