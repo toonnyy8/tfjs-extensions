@@ -315,8 +315,8 @@ export function largeRankTranspose(x, perm = null) {
     return tf.tidy(() => {
         let rankIndex = x.shape.map((_, index) => index)
         perm = perm ? perm : rankIndex.sort((a, b) => { //由大到小排序
-            if (a.tag > b.tag) return -1;
-            if (a.tag < b.tag) return 1;
+            if (a > b) return -1;
+            if (a < b) return 1;
             return 0;
         })
         if (perm.length != x.shape.length) {
@@ -331,10 +331,26 @@ export function largeRankTranspose(x, perm = null) {
                 let idx = _rankIndex.indexOf(axis)
                 _rankIndex.splice(idx, 1)
                 _rankIndex.splice(moveTo, 0, axis)
+                let shape = input.shape.slice()
+                shape.splice(idx, 1)
+                let strides = [input.shape[0] * input.strides[0]].concat(input.strides).concat([1])
+                let outputShape = shape.slice()
+                outputShape.splice(moveTo, 0, input.shape[idx])
+
+
                 let output = tf.stack(
-                    tf.unstack(input, idx),
-                    moveTo
-                )
+                    tf.unstack(
+                        input.reshape([-1, input.shape[idx], strides[idx + 1]]),
+                        1
+                    ).map((t) => {
+                        return tf.tidy(() => {
+                            let y = t.reshape(shape)
+                            let yStrides = [y.shape[0] * y.strides[0]].concat(y.strides).concat([1])
+                            return y.reshape([-1, yStrides[moveTo]])
+                        })
+                    }),
+                    1
+                ).reshape(outputShape)
                 return [output, _rankIndex]
             })
         }
