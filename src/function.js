@@ -160,7 +160,12 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
             .reshape([-1])
             .gather(indices)
             .sum(tagSum)
-            .transpose(outputInfo.map((info) => info.axis))
+            .transpose(outputInfo
+                .reduce((last, curr, index) => {
+                    last[`${curr.axis}`] = index
+                    return last
+                }, [])
+            )
     })
 }
 
@@ -288,14 +293,17 @@ export function clipByGlobalNorm(tList, clipNorm) {
         let globalNorm = tf.sqrt(
             tf.addN(
                 tList.map((t) => {
-                    return tf.square(l2Normalize(t))
+                    return tf.sum(tf.square(t))
                 })
             )
         )
-        return tList.map((t) => {
-            let lower = tf.fill(globalNorm.shape, clipNorm)
-            let isGreater = tf.greater(globalNorm, lower)
-            return tf.div(tf.mul(t, clipNorm), tf.where(isGreater, globalNorm, lower))
-        })
+        return [
+            tList.map((t) => {
+                let lower = tf.fill(globalNorm.shape, clipNorm)
+                let isGreater = tf.greater(globalNorm, lower)
+                return tf.div(tf.mul(t, clipNorm), tf.where(isGreater, globalNorm, lower))
+            }),
+            globalNorm
+        ]
     })
 }
