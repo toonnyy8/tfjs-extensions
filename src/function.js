@@ -155,17 +155,20 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
                 return last
             }, [])
 
-        return operand.
-            transpose(inputInfo.map((info) => info.axis))
-            .reshape([-1])
-            .gather(indices)
-            .sum(tagSum)
-            .transpose(outputInfo
+        return largeRankTranspose(
+            largeRankTranspose(
+                operand,
+                inputInfo.map((info) => info.axis)
+            )
+                .reshape([-1])
+                .gather(indices)
+                .sum(tagSum),
+            outputInfo
                 .reduce((last, curr, index) => {
                     last[`${curr.axis}`] = index
                     return last
                 }, [])
-            )
+        )
     })
 }
 
