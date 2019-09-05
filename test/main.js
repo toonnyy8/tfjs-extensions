@@ -13,7 +13,7 @@ console.log(tf.memory())
 // time2.then((time) => { console.log(`largeRankTranspose  kernelMs: ${time.kernelMs}, wallTimeMs: ${time.wallMs}`); })
 const a = tf.tensor([1, 2, 3, 4], [2, 2]);
 const b = tf.tensor([5, 6, 7, 8], [2, 2]);
-tf.stack([a, b]).print();
-tfex.stack([a, b], 0).print();
+tf.unstack(a, 1).forEach(t => t.print())
+tfex.unstack(a, 1).forEach(t => t.print())
 
 console.log(tf.memory())

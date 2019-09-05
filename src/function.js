@@ -383,6 +383,20 @@ export function stack(tensors = [tf.tensor()], axis) {
 
 export function unstack(x = tf.tensor(), axis) {
     return tf.tidy(() => {
+        axis = axis != null ? axis : 0
+        let shape = x.shape.slice()
+        let strides = [shape[0] * x.strides[0]].concat(x.strides).concat([1])
+        if (!(x instanceof tf.Tensor)) {
+            console.error(`x must be tensor`)
+            return
+        }
 
+        return tf.unstack(
+            x.reshape([-1, shape.splice(axis, 1)[0], strides[axis + 1]]),
+            1
+        ).map(t => {
+            console.log(t)
+            return t.reshape(shape)
+        })
     })
 }
