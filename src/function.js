@@ -155,8 +155,8 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
                 return last
             }, [])
 
-        return largeRankTranspose(
-            largeRankTranspose(
+        return transpose(
+            transpose(
                 operand,
                 inputInfo.map((info) => info.axis)
             )
