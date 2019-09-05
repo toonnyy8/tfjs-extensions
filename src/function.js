@@ -25,7 +25,7 @@ export function mergeShape(tensor = tf.tensor(), axises, at = null) {
                 console.error("axis ${at} is not at axises")
             }
 
-            axises.sort(function (a, b) { //由大到小排序
+            axises.sort(function(a, b) { //由大到小排序
                 if (a > b) return -1;
                 if (a < b) return 1;
                 return 0;
@@ -155,19 +155,19 @@ function einsumSingleInput(subscript = { inputs: [""], output: "" }, operand = t
                 return last
             }, [])
 
-        return largeRankTranspose(
-            largeRankTranspose(
+        return transpose(
+            transpose(
                 operand,
                 inputInfo.map((info) => info.axis)
             )
-                .reshape([-1])
-                .gather(indices)
-                .sum(tagSum),
+            .reshape([-1])
+            .gather(indices)
+            .sum(tagSum),
             outputInfo
-                .reduce((last, curr, index) => {
-                    last[`${curr.axis}`] = index
-                    return last
-                }, [])
+            .reduce((last, curr, index) => {
+                last[`${curr.axis}`] = index
+                return last
+            }, [])
         )
     })
 }
@@ -236,17 +236,17 @@ function einsumMultipleInput(subscript = { inputs: [""], output: null }, operand
 
         operands.unshift(
             x
-                .reshape([-1, 1])
-                .dot(y.reshape([1, -1]))
-                .reshape(x.shape.concat(y.shape))
+            .reshape([-1, 1])
+            .dot(y.reshape([1, -1]))
+            .reshape(x.shape.concat(y.shape))
         )
         subscript.inputs.unshift(
             inputInfo.x
+            .reduce((last, info) => last + info.tag, "")
+            .concat(
+                inputInfo.y
                 .reduce((last, info) => last + info.tag, "")
-                .concat(
-                    inputInfo.y
-                        .reduce((last, info) => last + info.tag, "")
-                )
+            )
         )
 
         if (subscript.inputs.length == 1) {
@@ -274,7 +274,7 @@ export function matrixBandPart(input = tf.tensor(), numLower = 0, numUpper = 0) 
 export let stopGradient = tf.customGrad((x, save) => {
     // Save x to make sure it's available later for the gradient.
     save([x])
-    // Override gradient of our custom x ^ 2 op to be dy * abs(x);
+        // Override gradient of our custom x ^ 2 op to be dy * abs(x);
     return {
         value: x.clone(),
         // Note `saved.x` which points to the `x` we saved earlier.
@@ -311,12 +311,12 @@ export function clipByGlobalNorm(tList, clipNorm) {
     })
 }
 
-export function largeRankTranspose(x, perm = null) {
+export function transpose(x, perm = null) {
     return tf.tidy(() => {
         let rankIndex = x.shape.map((_, index) => index)
-        perm = perm ? perm : rankIndex.sort((a, b) => { //由大到小排序
-            if (a.tag > b.tag) return -1;
-            if (a.tag < b.tag) return 1;
+        perm = perm ? perm : rankIndex.slice().sort((a, b) => { //由大到小排序
+            if (a > b) return -1;
+            if (a < b) return 1;
             return 0;
         })
         if (perm.length != x.shape.length) {
@@ -331,8 +331,9 @@ export function largeRankTranspose(x, perm = null) {
                 let idx = _rankIndex.indexOf(axis)
                 _rankIndex.splice(idx, 1)
                 _rankIndex.splice(moveTo, 0, axis)
-                let output = tf.stack(
-                    tf.unstack(input, idx),
+
+                let output = stack(
+                    unstack(input, idx),
                     moveTo
                 )
                 return [output, _rankIndex]
@@ -343,5 +344,43 @@ export function largeRankTranspose(x, perm = null) {
             [output, rankIndex] = _singleTranspose(output, i, perm, rankIndex)
         }
         return output
+    })
+}
+
+export function stack(tensors = [tf.tensor()], axis) {
+    return tf.tidy(() => {
+        axis = axis != null ? axis : 0
+        let shape = tensors[0].shape.slice()
+        let strides = [shape[0] * (tensors[0].strides[0] || 1)].concat(tensors[0].strides).concat([1])
+        if (tensors.find(tensor => !(tensor instanceof tf.Tensor) || (tensor.shape.toString() != shape.toString())) != undefined) {
+            console.error(`All tensors passed to stack must match`)
+            return
+        }
+        shape.splice(axis, 0, tensors.length)
+        return tf.stack(
+            tensors.map(tensor => {
+                return tensor.reshape([-1, strides[axis]])
+            }),
+            1
+        ).reshape(shape)
+    })
+}
+
+export function unstack(x = tf.tensor(), axis) {
+    return tf.tidy(() => {
+        axis = axis != null ? axis : 0
+        let shape = x.shape.slice()
+        let strides = [shape[0] * (x.strides[0] || 1)].concat(x.strides).concat([1])
+        if (!(x instanceof tf.Tensor)) {
+            console.error(`x must be tensor`)
+            return
+        }
+
+        return tf.unstack(
+            x.reshape([-1, shape.splice(axis, 1)[0], strides[axis + 1]]),
+            1
+        ).map(t => {
+            return t.reshape(shape)
+        })
     })
 }
