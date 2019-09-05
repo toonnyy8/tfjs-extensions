@@ -361,3 +361,28 @@ export function largeRankTranspose(x, perm = null) {
         return output
     })
 }
+
+export function stack(tensors = [tf.tensor()], axis) {
+    return tf.tidy(() => {
+        axis = axis != null ? axis : 0
+        let shape = tensors[0].shape.slice()
+        let strides = [shape[0] * tensors[0].strides[0]].concat(tensors[0].strides).concat([1])
+        if (tensors.find(tensor => !(tensor instanceof tf.Tensor) || (tensor.shape.toString() != shape.toString())) != undefined) {
+            console.error(`All tensors passed to stack must match`)
+            return
+        }
+        shape.splice(axis, 0, tensors.length)
+        return tf.stack(
+            tensors.map(tensor => {
+                return tensor.reshape([-1, strides[axis]])
+            }),
+            axis
+        ).reshape(shape)
+    })
+}
+
+export function unstack(x = tf.tensor(), axis) {
+    return tf.tidy(() => {
+
+    })
+}
