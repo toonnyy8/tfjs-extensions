@@ -9,17 +9,10 @@ declare class SequenceTidy {
 
 export declare function sequenceTidy (func: ()=>{}):SequenceTidy
 
-declare class MemoryManagement {
-    _mem:tf.Tensor
+export declare class TensorPtr {
+    _ptr:tf.Tensor
     ptr :tf.Tensor
     constructor()
 }
 
-declare class MemoryBox{
-    box:{name: MemoryManagement}
-    constructor()
-    read(name: String):MemoryManagement
-    dispose():void
-}
-
-export declare function memoryBox():MemoryBox
+export declare function tensorPtr():TensorPtr

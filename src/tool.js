@@ -32,36 +32,19 @@ export function sequenceTidy(func = () => {}) {
     return new SequenceTidy(func)
 }
 
-class MemoryManagement {
+export class TensorPtr {
     constructor() {
-        this._mem = null
+        this._ptr = null
     }
     get ptr() {
-        return this._mem
+        return this._ptr
     }
     set ptr(value) {
-        tf.dispose(this._mem)
-        this._mem = value
+        tf.dispose(this._ptr)
+        this._ptr = value
     }
 }
 
-class MemoryBox {
-    constructor() {
-        this.box = {}
-    }
-
-    read(name) {
-        if (this.box[name] == undefined) {
-            this.box[name] = new MemoryManagement()
-        }
-        return this.box[name]
-    }
-
-    dispose() {
-        Object.values(this.box).forEach((v) => v = null)
-    }
-}
-
-export function memoryBox() {
-    return new MemoryBox()
+export function tensorPtr() {
+    return new TensorPtr()
 }
