@@ -1,12 +1,12 @@
 import * as tf from "@tensorflow/tfjs"
 
 class SequenceTidy {
-    constructor(startFunc = () => {}) {
+    constructor(startFunc = () => { }) {
         this.funcs = []
         this.funcs.push(startFunc)
     }
 
-    next(func = () => {}) {
+    next(func = () => { }) {
         this.funcs.push(func)
         return this
     }
@@ -28,23 +28,32 @@ class SequenceTidy {
     }
 }
 
-export function sequenceTidy(func = () => {}) {
+export function sequenceTidy(func = () => { }) {
     return new SequenceTidy(func)
 }
 
 export class TensorPtr {
-    constructor() {
-        this._ptr = null
+    constructor(tensor = null) {
+        if ((tensor instanceof tf.Tensor) || tensor == null) {
+            this._ptr = tensor
+        } else {
+            console.error(`tensor must be an instance of tf.Tensor`)
+        }
     }
-    get ptr() {
+    read() {
         return this._ptr
     }
-    set ptr(value) {
-        tf.dispose(this._ptr)
-        this._ptr = value
+    assign(tensor) {
+        if ((tensor instanceof tf.Tensor) || tensor == null) {
+            tf.dispose(this._ptr)
+            this._ptr = tensor
+            return this._ptr
+        } else {
+            console.error(`tensor must be an instance of tf.Tensor`)
+        }
     }
 }
 
-export function tensorPtr() {
-    return new TensorPtr()
+export function tensorPtr(tensor = null) {
+    return new TensorPtr(tensor)
 }
