@@ -301,7 +301,7 @@ function _einsum(subscript = { inputs: [""], output: null }, operands = [tf.tens
 
                     }
                     tptrL.assign({ [`${i}`]: tptrL.read(`${i}`).reshape(newShape) })//expand dims
-                    tptrL.assign({ [`${i}`]: tptrL.read(`${i}`).tile(reps) })//repeat element
+                    tptrL.assign({ [`${i}`]: tile(tptrL.read(`${i}`), reps) })//repeat element
                     tptrL.assign({ "output": tf.mul(tptrL.read("output"), tptrL.read(`${i}`)) })//mul
                     tptrL.assign({ [`${i}`]: null })//dispose
                 }
