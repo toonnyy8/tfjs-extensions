@@ -41,4 +41,5 @@ l.sequence((tptrList) => {
 }).sequence(tptrList => {
     tptrList.assign({ "tB": tptrList.read("tB").mul(tptrList.read("tA")) })
 }).read("tB").print()
+l.assign({ tA: null })
 console.log(tf.memory())
