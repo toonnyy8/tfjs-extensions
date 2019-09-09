@@ -355,7 +355,7 @@ export function tile(x, reps) {
 
         let output = tool.tensorPtr(x.clone())
         for (let i = 0; i < reps.length; i++) {
-            let strides = [output.read().shape[0] * output.read().strides[0]].concat(output.read().strides).concat([1])
+            let strides = [output.read().shape[0] * output.read().strides[0], ...output.read().strides, 1]
             let newShape = output.read().shape.slice()
             newShape[i] *= reps[i]
             output.assign(output.read().reshape([-1, output.read().shape[i], strides[i + 1]]))
