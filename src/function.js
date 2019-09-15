@@ -78,7 +78,7 @@ export function matrixBandPart(input = tf.tensor(), numLower = 0, numUpper = 0) 
 
 export let stopGradient = tf.customGrad((x, save) => {
     // Save x to make sure it's available later for the gradient.
-    save([x.clone()])
+    save([x])
     // Override gradient of our custom x ^ 2 op to be dy * abs(x);
     return {
         value: x.clone(),
