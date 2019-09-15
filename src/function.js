@@ -112,17 +112,27 @@ export function clipByGlobalNorm(tList, clipNorm) {
         globalNorm.assign(
             tf.addN(
                 tList.map((t) => {
-                    let tptr = tool.tensorPtr(tf.square(t))
-                    return tptr.assign(tf.sum(tptr.read())).read()
+                    return tool.tensorPtr(tf.square(t))
+                        .sequence(tptr => {
+                            tptr.assign(
+                                tf.where(
+                                    tptr.read().isNaN(),
+                                    tf.fill(tptr.read().shape, Infinity),
+                                    tptr.read()
+                                )
+                            )
+                            tptr.assign(tf.sum(tptr.read()))
+                        })
+                        .read()
                 })
             )
         ).assign(tf.sqrt(globalNorm.read()))
         return [
             tList.map((t) => {
-                let lower = tool.tensorPtr(tf.fill(globalNorm.read().shape, clipNorm))
-                let isGreater = tool.tensorPtr(tf.greater(globalNorm.read(), lower.read()))
+                let clip = tool.tensorPtr(tf.fill(globalNorm.read().shape, clipNorm))
+                let isGreater = tool.tensorPtr(tf.greater(globalNorm.read(), clip.read()))
                 let output = tool.tensorPtr(tf.mul(t, clipNorm))
-                output.assign(tf.div(output.read(), tf.where(isGreater.read(), globalNorm.read(), lower.read())))
+                output.assign(tf.div(output.read(), tf.where(isGreater.read(), globalNorm.read(), clip.read())))
                 return output.read()
             }),
             globalNorm.read()
