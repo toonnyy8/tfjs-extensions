@@ -108,27 +108,32 @@ export function l2Normalize(x, axis = null, epsilon = 1e-12) {
 
 export function clipByGlobalNorm(tList, clipNorm) {
     return tf.tidy(() => {
+        let newTList = tList.map(t => {
+            return tf.tidy(() => {
+                return tf.where(
+                    t.isNaN(),
+                    tf.fill(t.shape, Infinity),
+                    t
+                )
+            })
+        })
         let globalNorm = tool.tensorPtr()
-        globalNorm.assign(
-            tf.addN(
-                tList.map((t) => {
-                    return tool.tensorPtr(tf.square(t))
-                        .sequence(tptr => {
-                            tptr.assign(
-                                tf.where(
-                                    tptr.read().isNaN(),
-                                    tf.fill(tptr.read().shape, Infinity),
-                                    tptr.read()
-                                )
-                            )
-                            tptr.assign(tf.sum(tptr.read()))
+            .sequence(gNptr => {
+                gNptr.assign(
+                    tf.addN(
+                        newTList.map((t) => {
+                            return tool.tensorPtr(tf.square(t))
+                                .sequence(tptr => {
+                                    tptr.assign(tf.sum(tptr.read()))
+                                })
+                                .read()
                         })
-                        .read()
-                })
-            )
-        ).assign(tf.sqrt(globalNorm.read()))
+                    )
+                )
+                gNptr.assign(tf.sqrt(gNptr.read()))
+            })
         return [
-            tList.map((t) => {
+            newTList.map((t) => {
                 let clip = tool.tensorPtr(tf.fill(globalNorm.read().shape, clipNorm))
                 let isGreater = tool.tensorPtr(tf.greater(globalNorm.read(), clip.read()))
                 let output = tool.tensorPtr(tf.mul(t, clipNorm))
