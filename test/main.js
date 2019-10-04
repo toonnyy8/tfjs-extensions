@@ -50,9 +50,18 @@ console.log(tf.memory())
 
 // const time = tf.time(() => tfex.tile(tf.tensor([1, 2, 3, 4], [2, 2]), [1, 2]).print())
 // time.then((time) => { console.log(`tfex.transpose  kernelMs: ${time.kernelMs}, wallTimeMs: ${time.wallMs}`); })
-let x = tf.tensor([0, 0, 17])
-let y = tf.tensor([0, 0, 1])
-tfex.softmax(x).print()
-tf.softmax(x).print()
-tfex.softmaxCrossEntropyWithLogits(x, y).print()
+// let x = tf.tensor([0, 0, 17])
+// let y = tf.tensor([0, 0, 1])
+// tfex.softmax(x).print()
+// tf.softmax(x).print()
+// tfex.softmaxCrossEntropyWithLogits(x, y).print()
+
+
+tfex.scope.getVariable("a", [1])
+// let save = tfex.scope.save()
+// tfex.scope.variableScope("testA").load(save)
+// console.log(tfex.scope.save())
+
+let save = tfex.sl.save(tf.tensor([true, false], null, "bool"))
+tfex.sl.load(save).forEach(t => t.print())
 console.log(tf.memory())

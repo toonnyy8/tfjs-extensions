@@ -54,7 +54,7 @@ export class VariableScope {
                         dtype: this._variables[key].dtype,
                         shape: this._variables[key].shape,
                         trainable: this._variables[key].trainable,
-                        values: this._variables[key].arraySync()
+                        values: this._variables[key].dataSync()
                     }
                     return variables
                 }, {}),

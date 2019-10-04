@@ -13,7 +13,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "parcel test/index.html -p 8080 --open",
+    "dev:test": "parcel test/index.html -p 8080 --open",
     "build": "parcel build --no-content-hash src/index.ts --out-dir build --public-url=./ "
   },
   "repository": {
