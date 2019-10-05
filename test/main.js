@@ -1,7 +1,42 @@
-import "@babel/polyfill"
+// import "core-js/stable"
+import "core-js/stable"
+import "regenerator-runtime/runtime"
 
 import * as tf from "@tensorflow/tfjs"
 import * as tfex from "../src"
+import * as binary from "js-binary"
+
+var user = {
+    name: {
+        first: 'Guilherme',
+        last: 'Souza'
+    },
+    pass: new Buffer('042697a30b2dafbdf91bf66bdacdcba8', 'hex'),
+    creationDate: new Date('2014-04-11T21:22:32.504Z'),
+    active: true,
+    achievements: [3, 14, 15, 92, 65, 35]
+}
+
+var Type = binary.Type
+var schema = new Type({
+    name: {
+        first: 'string',
+        last: 'string'
+    },
+    pass: 'Buffer',
+    creationDate: 'date',
+    active: 'boolean',
+    achievements: ['int'],
+    'optionalField?': 'int'
+})
+
+var encoded = schema.encode(user)
+console.log(encoded)
+
+var decoded = schema.decode(encoded)
+console.log(decoded)
+
+console.log(new Buffer('042697a30b2dafbdf91bf66bdacdcba8', 'hex'))
 
 console.log(tf.memory())
 
@@ -62,6 +97,7 @@ tfex.scope.getVariable("a", [1])
 // tfex.scope.variableScope("testA").load(save)
 // console.log(tfex.scope.save())
 
-let save = tfex.sl.save(tf.tensor([true, false], null, "bool"))
-tfex.sl.load(save).forEach(t => t.print())
+let save = tfex.sl.save({ 1: tf.tensor(["1.2", 0], null, "string") })
+console.log(save)
+console.log(tfex.sl.load(save))
 console.log(tf.memory())

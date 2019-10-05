@@ -1,72 +1,61 @@
 import * as tf from "@tensorflow/tfjs"
+import * as binary from "js-binary"
 
-export class saveTensor {
-    constructor(t, saveToChar = false) {
-        this.shape = t.shape
-        this.dtype = t.dtype
-        this.values = t.dataSync()
-        this.saveToChar = saveToChar
-        if (this.saveToChar) {
-            this.values = [...new Int16Array(this.values.buffer)].map((v) => String.fromCharCode(v))
-        }
-    }
+let dtypeCoder = {
+    int32: new binary.Type(['int']),
+    float32: new binary.Type(['float']),
+    string: new binary.Type(['string']),
+    bool: new binary.Type(['boolean']),
+    complex64: new binary.Type(['float'])
+
 }
 
-export class saveVariable extends saveTensor {
-    constructor(t, saveToChar = false) {
-        super(t, saveToChar)
-        this.name = t.name
-        this.trainable = t.trainable
-    }
-}
+let tensorCoder = new binary.Type({
+    shape: ['uint'],
+    dtype: 'string',
+    values: "Buffer",
+})
 
-export function save(tList, saveToChar) {
+let saverCoder = new binary.Type({
+    keys: ["string"],
+    tensors: ["Buffer"]
+})
+
+export function save(tList) {
     let save_ = (t) => {
-        if (t instanceof tf.Tensor) {
-            if (t instanceof tf.Variable) {
-                return new saveVariable(t, saveToChar)
+        return tf.tidy(() => {
+            if (t instanceof tf.Tensor) {
+                let values = t.reshape([-1]).arraySync()
+                if (t.dtype == "bool") {
+                    values = values.map(v => v ? true : false)
+                }
+                console.log(values)
+                return tensorCoder.encode({
+                    shape: t.shape,
+                    dtype: t.dtype,
+                    values: dtypeCoder[t.dtype].encode(values)
+                })
             } else {
-                return new saveTensor(t, saveToChar)
+                console.error(`tensor must be an instance of tf.Tensor`)
             }
-        } else {
-            console.error(`tensor must be an instance of tf.Tensor`)
-        }
+        })
     }
 
-    if (tList instanceof Array) {
-        return tList.map((t) => save_(t))
-    } else {
-        return [save_(tList)]
-    }
+    return saverCoder.encode({
+        keys: Object.keys(tList),
+        tensors: Object.values(tList).map(t => save_(t))
+    })
 }
 
-export function load(sTList) {
+export function load(saver) {
     return tf.tidy(() => {
-        let load_ = (sT) => {
-            return tf.tidy(() => {
-                if (sT instanceof saveTensor) {
-                    let values
-                    if (sT.saveToChar) {
-                        values = new Int32Array(sT.values.map((v) => (v).charCodeAt(0)))
-                    } else {
-                        values = sT.values
-                    }
-                    let t = tf.tensor(values, sT.shape, sT.dtype)
-                    if (sT instanceof saveVariable) {
-                        return tf.variable(t, sT.trainable, sT.name)
-                    } else {
-                        return t
-                    }
-                } else {
-                    console.error(`tensor must be an instance of saveTensor`)
-                }
-            })
-        }
+        let tList = saverCoder.decode(saver)
+        return tList.keys.reduce((last, key, idx) => {
+            let tObj = tensorCoder.decode(tList.tensors[idx])
+            tObj.values = dtypeCoder[tObj.dtype].decode(tObj.values)
+            last[key] = tf.tensor(tObj.values, tObj.shape, tObj.dtype)
+            return last
+        }, {})
 
-        if (sTList instanceof Array) {
-            return sTList.map((t) => load_(t))
-        } else {
-            return [load_(sTList)]
-        }
     })
 }
