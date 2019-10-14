@@ -103,7 +103,7 @@ export class Lambda extends tf.layers.Layer {
                 return inputShape
             }
         } else {
-            return this.customOutputShape
+            return [null].concat(this.customOutputShape)
         }
     }
 
