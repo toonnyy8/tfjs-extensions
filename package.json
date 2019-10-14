@@ -8,7 +8,8 @@
     "@tensorflow/tfjs": "^1.2.9",
     "core-js": "^3.2.1",
     "js-binary": "^1.2.0",
-    "parcel": "^1.12.3"
+    "parcel": "^1.12.4",
+    "regenerator-runtime": "^0.13.3"
   },
   "devDependencies": {
     "typescript": "^3.6.3"
