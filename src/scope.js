@@ -1,5 +1,4 @@
 import * as tf from "@tensorflow/tfjs"
-import * as sl from "./sl"
 
 export class VariableScope {
     constructor(name, path) {
